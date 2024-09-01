@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Gym Notation App</title>
+  <style>
+    body {
+      font-family: 'Arial', sans-serif;
+      margin: 0;
+      padding: 0;
+      background: #f4f6f9;
+      color: #333;
+    }
+
+    .container {
+      width: 90%;
+      max-width: 600px;
+      margin: auto;
+      padding: 20px;
+      background-color: #fff;
+      border-radius: 8px;
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+      margin-top: 20px;
+    }
+
+    h1 {
+      color: #003366;
+      background: #e6f0ff;
+      padding: 15px;
+      border-radius: 8px;
+      text-align: center;
+      font-size: 2em;
+      margin: -20px -20px 20px -20px;
+      border-bottom: 2px solid #003366;
+    }
+
+    .exercise {
+      margin-bottom: 25px;
+      padding: 20px;
+      border-radius: 8px;
+      background-color: #e6f0ff;
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    }
+
+    .exercise h3 {
+      margin-top: 0;
+      font-size: 1.4em;
+      color: #003366;
+    }
+
+    .form-group {
+      margin-bottom: 20px;
+    }
+
+    .form-group label {
+      display: block;
+      margin-bottom: 5px;
+      font-weight: bold;
+      color: #003366;
+    }
+
+    .form-group input[type="number"],
+    .form-group textarea {
+      width: calc(100% - 20px);
+      padding: 12px;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+      box-sizing: border-box;
+    }
+
+    .form-group input[type="number"] {
+      background-color: #f9f9f9;
+    }
+
+    .form-group textarea {
+      background-color: #f5f5f5;
+    }
+
+    button {
+      background-color: #003366;
+      color: #fff;
+      padding: 15px;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 1.2em;
+      transition: background-color 0.3s;
+      width: 100%;
+    }
+
+    button:hover {
+      background-color: #002244;
+    }
+
+    .no-exercises {
+      text-align: center;
+      color: #555;
+      font-style: italic;
+    }
+
+    @media (max-width: 600px) {
+      .form-group input[type="number"],
+      .form-group textarea {
+        width: 100%;
+      }
+
+      button {
+        padding: 12px;
+        font-size: 1.1em;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Today's Workout</h1>
+    <div id="exercises" class="exercise-container">
+      <!-- Exercises will be loaded here dynamically -->
+    </div>
+    <button onclick="saveWorkout()">Save Workout</button>
+  </div>
+
+  <script>
+    function onLoad() {
+      console.log("onLoad function called");
+      google.script.run
+        .withSuccessHandler(function(exercises) {
+          console.log("Exercises received:", exercises);
+          displayExercises(exercises);
+        })
+        .withFailureHandler(function(error) {
+          console.error("Error fetching exercises:", error);
+          document.getElementById('exercises').innerHTML = "<p class='no-exercises'>Error loading exercises. Please check the console for details.</p>";
+        })
+        .getExercisesForToday();
+    }
+
+    function displayExercises(exercises) {
+      console.log("displayExercises called with:", exercises);
+      var container = document.getElementById('exercises');
+      if (!exercises || exercises.length === 0) {
+        container.innerHTML = "<p class='no-exercises'>No exercises found for today.</p>";
+        return;
+      }
+      exercises.forEach(function(exercise) {
+        google.script.run
+          .withSuccessHandler(function(lastWorkout) {
+            var lastWorkoutInfo = '';
+            if (lastWorkout) {
+              lastWorkoutInfo = `
+                <p><strong>Last time:</strong> ${lastWorkout.weight} lb ${lastWorkout.sets.join(' ')}
+                (${lastWorkout.notes || 'No notes'})</p>
+              `;
+            }
+
+            var div = document.createElement('div');
+            div.className = 'exercise';
+            div.innerHTML = `
+              <h3>${exercise}</h3>
+              ${lastWorkoutInfo}
+              <div class="form-group">
+                <label for="${exercise}-weight">Weight:</label>
+                <input type="number" id="${exercise}-weight" value="${lastWorkout ? lastWorkout.weight : ''}">
+              </div>
+              <div class="form-group">
+                <label>Sets:</label>
+                <input type="number" id="${exercise}-set1" value="${lastWorkout ? lastWorkout.sets[0] : ''}">
+                <input type="number" id="${exercise}-set2" value="${lastWorkout ? lastWorkout.sets[1] : ''}">
+                <input type="number" id="${exercise}-set3" value="${lastWorkout ? lastWorkout.sets[2] : ''}">
+                <input type="number" id="${exercise}-set4" value="${lastWorkout ? lastWorkout.sets[3] : ''}">
+              </div>
+              <div class="form-group">
+                <textarea id="${exercise}-notes" placeholder="Notes">${lastWorkout ? lastWorkout.notes : ''}</textarea>
+              </div>
+            `;
+            container.appendChild(div);
+          })
+          .getLastWorkoutData(exercise);
+      });
+    }
+
+    function saveWorkout() {
+      var exercises = document.getElementsByClassName('exercise');
+      var workoutData = [];
+      var currentDate = new Date().toISOString().split('T')[0]; // Get current date in YYYY-MM-DD format
+
+      for (var i = 0; i < exercises.length; i++) {
+        var exercise = exercises[i].getElementsByTagName('h3')[0].innerText;
+        var weight = document.getElementById(exercise + '-weight').value;
+        var sets = [
+          document.getElementById(exercise + '-set1').value,
+          document.getElementById(exercise + '-set2').value,
+          document.getElementById(exercise + '-set3').value,
+          document.getElementById(exercise + '-set4').value
+        ];
+        var notes = document.getElementById(exercise + '-notes').value;
+
+        workoutData.push([currentDate, exercise, weight, ...sets, notes]);
+      }
+
+      google.script.run.withSuccessHandler(workoutSaved).saveWorkoutData(workoutData);
+    }
+
+    function workoutSaved() {
+      alert('Workout saved successfully!');
+    }
+
+    window.onload = onLoad;
+  </script>
+</body>
+</html>
+
