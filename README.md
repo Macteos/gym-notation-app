@@ -39,4 +39,4 @@ This project was developed by Mateo Escorcia. Contributions are not currently ac
 
 ## Contact
 
-For any questions or feedback, you can reach out to Mateo Escorcia at [your_email@example.com].
+For any questions or feedback, you can reach out to Mateo Escorcia at macteos@gmail.com.
