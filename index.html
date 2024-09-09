@@ -11,46 +11,51 @@
       padding: 0;
       background: #f4f6f9;
       color: #333;
+      font-size: 16px;
     }
 
     .container {
-      width: 90%;
+      width: 100%;
       max-width: 600px;
       margin: auto;
-      padding: 20px;
+      padding: 10px;
       background-color: #fff;
-      border-radius: 8px;
-      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-      margin-top: 20px;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+      box-sizing: border-box;
     }
 
     h1 {
       color: #003366;
       background: #e6f0ff;
-      padding: 15px;
-      border-radius: 8px;
+      padding: 10px;
       text-align: center;
-      font-size: 2em;
-      margin: -20px -20px 20px -20px;
+      font-size: 1.5em;
+      margin: 0 0 15px 0;
       border-bottom: 2px solid #003366;
     }
 
+    .exercise-container {
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
     .exercise {
-      margin-bottom: 25px;
-      padding: 20px;
+      padding: 15px;
       border-radius: 8px;
       background-color: #e6f0ff;
-      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
     }
 
     .exercise h3 {
       margin-top: 0;
-      font-size: 1.4em;
+      margin-bottom: 10px;
+      font-size: 1.2em;
       color: #003366;
     }
 
     .form-group {
-      margin-bottom: 20px;
+      margin-bottom: 15px;
     }
 
     .form-group label {
@@ -62,31 +67,34 @@
 
     .form-group input[type="number"],
     .form-group textarea {
-      width: calc(100% - 20px);
-      padding: 12px;
+      width: 100%;
+      padding: 8px;
       border: 1px solid #ccc;
-      border-radius: 6px;
+      border-radius: 4px;
       box-sizing: border-box;
+      font-size: 16px;
     }
 
-    .form-group input[type="number"] {
-      background-color: #f9f9f9;
+    .sets-container {
+      display: flex;
+      gap: 5px;
     }
 
-    .form-group textarea {
-      background-color: #f5f5f5;
+    .sets-container input {
+      flex: 1;
     }
 
     button {
       background-color: #003366;
       color: #fff;
-      padding: 15px;
+      padding: 12px;
       border: none;
-      border-radius: 6px;
+      border-radius: 4px;
       cursor: pointer;
-      font-size: 1.2em;
+      font-size: 1em;
       transition: background-color 0.3s;
       width: 100%;
+      margin-top: 20px;
     }
 
     button:hover {
@@ -99,15 +107,30 @@
       font-style: italic;
     }
 
-    @media (max-width: 600px) {
+    @media (max-width: 480px) {
+      body {
+        font-size: 14px;
+      }
+
+      .container {
+        padding: 5px;
+      }
+
+      h1 {
+        font-size: 1.3em;
+      }
+
+      .exercise {
+        padding: 10px;
+      }
+
       .form-group input[type="number"],
       .form-group textarea {
-        width: 100%;
+        padding: 6px;
       }
 
       button {
-        padding: 12px;
-        font-size: 1.1em;
+        padding: 10px;
       }
     }
   </style>
@@ -139,44 +162,57 @@
     function displayExercises(exercises) {
       console.log("displayExercises called with:", exercises);
       var container = document.getElementById('exercises');
+      container.innerHTML = ''; // Clear existing content
       if (!exercises || exercises.length === 0) {
         container.innerHTML = "<p class='no-exercises'>No exercises found for today.</p>";
         return;
       }
-      exercises.forEach(function(exercise) {
-        google.script.run
-          .withSuccessHandler(function(lastWorkout) {
-            var lastWorkoutInfo = '';
-            if (lastWorkout) {
-              lastWorkoutInfo = `
-                <p><strong>Last time:</strong> ${lastWorkout.weight} lb ${lastWorkout.sets.join(' ')}
-                (${lastWorkout.notes || 'No notes'})</p>
-              `;
-            }
+      
+      var exercisePromises = exercises.map(function(exercise) {
+        return new Promise(function(resolve) {
+          google.script.run
+            .withSuccessHandler(function(lastWorkout) {
+              resolve({exercise: exercise, lastWorkout: lastWorkout});
+            })
+            .getLastWorkoutData(exercise);
+        });
+      });
 
-            var div = document.createElement('div');
-            div.className = 'exercise';
-            div.innerHTML = `
-              <h3>${exercise}</h3>
-              ${lastWorkoutInfo}
-              <div class="form-group">
-                <label for="${exercise}-weight">Weight:</label>
-                <input type="number" id="${exercise}-weight" value="${lastWorkout ? lastWorkout.weight : ''}">
-              </div>
-              <div class="form-group">
-                <label>Sets:</label>
-                <input type="number" id="${exercise}-set1" value="${lastWorkout ? lastWorkout.sets[0] : ''}">
-                <input type="number" id="${exercise}-set2" value="${lastWorkout ? lastWorkout.sets[1] : ''}">
-                <input type="number" id="${exercise}-set3" value="${lastWorkout ? lastWorkout.sets[2] : ''}">
-                <input type="number" id="${exercise}-set4" value="${lastWorkout ? lastWorkout.sets[3] : ''}">
-              </div>
-              <div class="form-group">
-                <textarea id="${exercise}-notes" placeholder="Notes">${lastWorkout ? lastWorkout.notes : ''}</textarea>
-              </div>
+      Promise.all(exercisePromises).then(function(exerciseData) {
+        exerciseData.forEach(function({exercise, lastWorkout}) {
+          var lastWorkoutInfo = '';
+          if (lastWorkout) {
+            lastWorkoutInfo = `
+              <p><strong>Last time:</strong> ${lastWorkout.weight} lb ${lastWorkout.sets.join(' ')}
+              (${lastWorkout.notes || 'No notes'})</p>
             `;
-            container.appendChild(div);
-          })
-          .getLastWorkoutData(exercise);
+          }
+
+          var div = document.createElement('div');
+          div.className = 'exercise';
+          div.innerHTML = `
+            <h3>${exercise}</h3>
+            ${lastWorkoutInfo}
+            <div class="form-group">
+              <label for="${exercise}-weight">Weight (lb):</label>
+              <input type="number" id="${exercise}-weight" placeholder="${lastWorkout ? lastWorkout.weight : ''}">
+            </div>
+            <div class="form-group">
+              <label>Sets:</label>
+              <div class="sets-container">
+                <input type="number" id="${exercise}-set1" placeholder="${lastWorkout ? lastWorkout.sets[0] : ''}">
+                <input type="number" id="${exercise}-set2" placeholder="${lastWorkout ? lastWorkout.sets[1] : ''}">
+                <input type="number" id="${exercise}-set3" placeholder="${lastWorkout ? lastWorkout.sets[2] : ''}">
+                <input type="number" id="${exercise}-set4" placeholder="${lastWorkout ? lastWorkout.sets[3] : ''}">
+              </div>
+            </div>
+            <div class="form-group">
+              <label for="${exercise}-notes">Notes:</label>
+              <textarea id="${exercise}-notes" placeholder="${lastWorkout ? lastWorkout.notes : 'Add notes here'}"></textarea>
+            </div>
+          `;
+          container.appendChild(div);
+        });
       });
     }
 
@@ -210,4 +246,3 @@
   </script>
 </body>
 </html>
-
